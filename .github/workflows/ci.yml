@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  zig:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.15.2
+      - run: zig build
+      - run: zig build test
+      - run: zig build test-e2e
+      # Coverage-guided fuzz (ipc + e2e statemachine) runs until SIGINT;
+      # 60s budget. libFuzzer runtime is Linux-only on 0.15.x. Non-zero
+      # exit on findings is intentional → `|| true` for now, crash
+      # artifacts land in the build cache (future: upload artifact).
+      - if: runner.os == 'Linux'
+        run: timeout 60 zig build test --fuzz || true
+      - if: runner.os == 'Linux'
+        run: timeout 60 zig build test-e2e --fuzz || true

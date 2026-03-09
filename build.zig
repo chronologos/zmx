@@ -83,12 +83,40 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_exe_unit_tests.step);
     }
 
-    // Integration tests (bats)
+    // Black-box e2e against the installed binary
+    const run_e2e = blk: {
+        const cross_mod = b.createModule(.{
+            .root_source_file = b.path("src/cross.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        const e2e_opts = b.addOptions();
+        e2e_opts.addOption([]const u8, "zmx_bin", b.pathFromRoot(b.getInstallPath(.bin, "zmx")));
+
+        const e2e_mod = b.createModule(.{
+            .root_source_file = b.path("tests/e2e.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        e2e_mod.addImport("cross", cross_mod);
+        e2e_mod.addOptions("build_opts", e2e_opts);
+
+        const e2e_tests = b.addTest(.{ .root_module = e2e_mod });
+        const run = b.addRunArtifact(e2e_tests);
+        run.step.dependOn(b.getInstallStep());
+        b.step("test-e2e", "Black-box e2e against installed binary").dependOn(&run.step);
+        break :blk run;
+    };
+
+    // Integration tests (bats + e2e)
     {
-        const integration_step = b.step("test-integration", "Run bats integration tests");
+        const integration_step = b.step("test-integration", "Run bats + e2e integration tests");
         const bats = b.addSystemCommand(&.{ "bats", "test/session.bats" });
         bats.step.dependOn(b.getInstallStep());
         integration_step.dependOn(&bats.step);
+        integration_step.dependOn(&run_e2e.step);
     }
 
     // Check for LSP integration
