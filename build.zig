@@ -91,6 +91,33 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_exe_unit_tests.step);
     }
 
+    // Black-box e2e against the installed binary
+    _ = blk: {
+        const cross_mod = b.createModule(.{
+            .root_source_file = b.path("src/cross.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        const e2e_opts = b.addOptions();
+        e2e_opts.addOption([]const u8, "zmx_bin", b.pathFromRoot(b.getInstallPath(.bin, "zmx")));
+
+        const e2e_mod = b.createModule(.{
+            .root_source_file = b.path("tests/e2e.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
+        e2e_mod.addImport("cross", cross_mod);
+        e2e_mod.addOptions("build_opts", e2e_opts);
+
+        const e2e_tests = b.addTest(.{ .root_module = e2e_mod });
+        const run = b.addRunArtifact(e2e_tests);
+        run.step.dependOn(b.getInstallStep());
+        b.step("test-e2e", "Black-box e2e against installed binary").dependOn(&run.step);
+        break :blk run;
+    };
+
     // Check for LSP integration
     {
         const check = b.step("check", "Check if zmx compiles");
