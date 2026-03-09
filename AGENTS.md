@@ -40,6 +40,20 @@ To inspect the source code for zig's standard library, look inside the `zig_std_
 
 To inspect the source code for zig's standard library, look inside the `ghostty_src` folder.
 
+## Testing
+
+- **Unit + fuzz seed:** `zig build test` — includes in-process fuzz for IPC
+  decode (seed corpus only).
+- **Fuzz (continuous):** `zig build test --fuzz` — coverage-guided, runs
+  until ctrl-C.
+- **E2E (Go):** `ZMX_BIN=$PWD/zig-out/bin/zmx go test -C tests ./e2e -v`
+  (go.mod is in `tests/`, so use `-C tests` or `cd tests` first)
+- **State machine:** `... -run StateMachine -rapid.checks=10` — slow;
+  each check spawns real daemons under PTY.
+
+Harness-specific gotchas (pipe inheritance, PTY setup, ZMX_DIR shape,
+shell-quoting, overlapping-runs race): see `tests/AGENTS.md`.
+
 ## Issue Tracking
 
 We use bd (beads, https://github.com/steveyegge/beads) for issue tracking instead of Markdown TODOs or external tools.

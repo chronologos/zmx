@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  zig:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.15.2
+      - run: zig build
+      - run: zig build test
+      # Fuzz runs coverage-guided until SIGINT; 60s budget. Non-zero exit
+      # on findings is intentional → `|| true` for now, crash artifacts
+      # land in the build cache (future: upload artifact).
+      - run: timeout 60 zig build test --fuzz || true
+
+  e2e:
+    needs: zig
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v1
+        with:
+          version: 0.15.2
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: tests/go.sum
+      - run: zig build
+      # go.mod is at tests/, not repo root — must run go test from there.
+      # -short skips the state machine (covered separately below).
+      - name: CLI + defensive tests
+        working-directory: tests
+        run: go test ./e2e -short -timeout 60s -v
+        env:
+          ZMX_BIN: ${{ github.workspace }}/zig-out/bin/zmx
+      - name: State-machine property tests
+        working-directory: tests
+        run: go test ./e2e -run StateMachine -rapid.checks=5 -timeout 180s -v
+        env:
+          ZMX_BIN: ${{ github.workspace }}/zig-out/bin/zmx

@@ -15,3 +15,6 @@ prior_art/
 result
 result-*
 .direnv/
+
+# Go e2e tests
+tests/e2e/testdata/

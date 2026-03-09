@@ -212,3 +212,65 @@ pub fn probeSession(alloc: std.mem.Allocator, socket_path: []const u8) SessionPr
     }
     return error.Unexpected;
 }
+
+// ─── Fuzz: wire-byte decode paths ───────────────────────────────────────
+//
+// `zig build test --fuzz` runs coverage-guided; plain `zig build test`
+// runs one pass against the seed corpus.
+
+test "fuzz expectedLength" {
+    const S = struct {
+        fn one(_: void, input: []const u8) !void {
+            const len = expectedLength(input) orelse return;
+            // Downstream computes `data[headerSize..len]`; underflow would OOB.
+            try std.testing.expect(len >= @sizeOf(Header));
+            // header.len is u32 off the wire; arithmetic must be widened to
+            // usize so a near-max value can't wrap the result.
+            const hdr = std.mem.bytesToValue(Header, input[0..@sizeOf(Header)]);
+            try std.testing.expect(
+                len == @as(usize, @sizeOf(Header)) + @as(usize, hdr.len),
+            );
+        }
+    };
+    try std.testing.fuzz({}, S.one, .{
+        .corpus = &.{
+            &[_]u8{ @intFromEnum(Tag.Info), 0, 0, 0, 0 },
+            &[_]u8{ @intFromEnum(Tag.Output), 0xff, 0xff, 0xff, 0xff },
+        },
+    });
+}
+
+test "fuzz Tag dispatch for all wire bytes" {
+    // Tag is non-exhaustive, so out-of-range wire bytes (11-255) are
+    // representable rather than UB at bytesToValue time. Every dispatch
+    // switch must have a `_` arm.
+    const S = struct {
+        fn one(_: void, input: []const u8) !void {
+            if (input.len < @sizeOf(Header)) return;
+            const hdr = std.mem.bytesToValue(Header, input[0..@sizeOf(Header)]);
+            switch (hdr.tag) {
+                .Input, .Output, .Resize, .Detach, .DetachAll, .Kill, .Info, .Init, .History, .Run, .Ack => {},
+                _ => {},
+            }
+        }
+    };
+    try std.testing.fuzz({}, S.one, .{});
+}
+
+test "fuzz Info slice bounds" {
+    // cmd_len/cwd_len are wire-supplied u16s; slicing must clamp to
+    // MAX_*_LEN or a large wire value would read past the fixed arrays.
+    const S = struct {
+        fn one(_: void, input: []const u8) !void {
+            if (input.len < @sizeOf(Info)) return;
+            const info = std.mem.bytesToValue(Info, input[0..@sizeOf(Info)]);
+            const cmd_end = @min(info.cmd_len, MAX_CMD_LEN);
+            const cwd_end = @min(info.cwd_len, MAX_CWD_LEN);
+            _ = info.cmd[0..cmd_end];
+            _ = info.cwd[0..cwd_end];
+        }
+    };
+    try std.testing.fuzz({}, S.one, .{
+        .corpus = &.{std.mem.asBytes(&std.mem.zeroes(Info))},
+    });
+}
