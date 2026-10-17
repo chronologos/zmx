@@ -35,16 +35,16 @@ A session:
 
 ```json
 {
-  "name": "work", "pid": 4242, "born": 1792270684, "seq": 15,
-  "now":    {"id": "", "state": "blocked", "kind": "question", "app": "claude-code",
-             "msg": "Do you prefer red or blue?", "source": "status", "seq": 15, "at": 1792270709568},
+  "name": "work", "pid": 4242, "born": 1700000000, "seq": 16,
+  "now":    {"id": "", "state": "blocked", "kind": "question", "app": "deployer",
+             "msg": "Ship to eu-west?", "source": "status", "seq": 15, "at": 1700000009568},
   "status": [ …every record, same shape as `now`… ],
   "bell":   {"count": 2, "seq": 3, "at": 0},
   "mark":   {"step": "output_start", "seq": 1, "at": 0},
   "exit":   {"code": 3, "seq": 6, "at": 0},
-  "title":  {"text": "Single word reply", "seq": 7, "at": 0},
+  "title":  {"text": "Nightly deploy", "seq": 7, "at": 0},
   "pwd":    {"text": "file://host/path", "seq": 4, "at": 0},
-  "notify": {"title": "Claude Code", "body": "Claude needs your permission", "seq": 16, "at": 0}
+  "notify": {"title": "Deploy", "body": "Waiting for approval", "seq": 16, "at": 0}
 }
 ```
 

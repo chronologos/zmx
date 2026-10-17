@@ -276,22 +276,22 @@ mod tests {
     }
 
     #[test]
-    fn a_real_capture() {
+    fn a_whole_file() {
         let s = session(
-            "progress 13 1792270706613 indeterminate\n\
-             title 7 1792270695265 U2luZ2xlIHdvcmQgcmVwbHk=\n\
-             notify 16 1792270715575 Q2xhdWRlIENvZGU= Q2xhdWRlIG5lZWRzIHlvdXIgcGVybWlzc2lvbg==\n\
-             status 15 1792270709568 state=blocked:app=claude-code:kind=question:msg=YW5zd2VyOiBEbyB5b3UgcHJlZmVyIHJlZCBvciBibHVlPyAoUmVkIMK3IEJsdWUp\n",
+            "progress 13 1700000006613 indeterminate\n\
+             title 7 1700000005265 TmlnaHRseSBkZXBsb3k=\n\
+             notify 16 1700000015575 RGVwbG95 V2FpdGluZyBmb3IgYXBwcm92YWw=\n\
+             status 15 1700000009568 state=blocked:app=deployer:kind=question:msg=U2hpcCB0byBldS13ZXN0IMK3IDMgb2YgND8=\n",
         );
         assert_eq!((s.pid, s.born, s.seq), (7, 9, 99));
         let now = s.now.unwrap();
         assert_eq!((now.state, now.kind, now.source), (State::Blocked, Some(Kind::Question), Source::Status));
-        assert_eq!(now.app.as_deref(), Some("claude-code"));
-        assert_eq!(now.msg.as_deref(), Some("answer: Do you prefer red or blue? (Red · Blue)"));
-        assert_eq!(now.stamp, Stamp { seq: 15, at: 1_792_270_709_568 });
-        assert_eq!(s.title.unwrap().value.text, "Single word reply");
+        assert_eq!(now.app.as_deref(), Some("deployer"));
+        assert_eq!(now.msg.as_deref(), Some("Ship to eu-west · 3 of 4?"));
+        assert_eq!(now.stamp, Stamp { seq: 15, at: 1_700_000_009_568 });
+        assert_eq!(s.title.unwrap().value.text, "Nightly deploy");
         let n = s.notify.unwrap().value;
-        assert_eq!((n.title.as_deref(), n.body.as_str()), (Some("Claude Code"), "Claude needs your permission"));
+        assert_eq!((n.title.as_deref(), n.body.as_str()), (Some("Deploy"), "Waiting for approval"));
     }
 
     #[test]
