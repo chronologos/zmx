@@ -4,6 +4,17 @@ Everything this fork adds to the zmx daemon lives here. `main` mirrors upstream
 (`neurosnap/zmx`); the `fork` bookmark is our commits stacked on top of it. The rules exist
 so that `jj rebase -b fork -d main` stays a non-event.
 
+## What is here
+
+- `facts.zig`: sets the callbacks on the daemon's terminal parser, answers the OSC 7501 probe,
+  and publishes what the program in the pty reports as one small file per session.
+- `FACTS.md`: that file's format, the whole contract with its readers.
+- `../../bridge/`: the reader, `zmx-bridge`. A separate Rust program with its own build;
+  nothing in zmx's build knows about it.
+
+The two seams: `install(...)` in `src/loop.zig`, after the parser is made, and the import in
+`src/test.zig` that gets this directory's tests collected.
+
 ## Rules
 
 1. **New daemon code goes in this directory**, never in an upstream file.
@@ -50,6 +61,7 @@ zig-0.16 build test -Dtarget=aarch64-macos
 zig-0.16 build -Dtarget=aarch64-macos
 env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY TMPDIR=/tmp SHELL=/bin/bash \
   bats --jobs 1 test/*.bats
+(cd bridge && cargo test)
 ```
 
 - `-Dtarget` is deliberate. A native-target build compiles zig 0.16.0's libc++ against the

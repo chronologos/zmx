@@ -8,7 +8,7 @@ fail() { echo "fork-check: FAIL — $1" >&2; exit 1; }
 # --- Seams: `// [fork]` lines in upstream-owned files ---------------------------------
 # A rebase that drops a seam compiles fine and silently disables the fork's daemon code;
 # one that duplicates it runs that code twice. Change this number with the seam itself.
-seams=0
+seams=2
 seam_lines=$(rg -n '//\s*\[fork\]\s*$' \
   --glob '!src/fork/**' --glob '!bridge/**' --glob '!scripts/**' . || true)
 seam_count=$(printf '%s' "$seam_lines" | grep -c . || true)

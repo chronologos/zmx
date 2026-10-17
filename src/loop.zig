@@ -253,6 +253,7 @@ fn daemonLoop(daemon: *Daemon, gpa: std.mem.Allocator, io: std.Io, server_sock_f
     defer term.deinit(gpa);
     var vt_stream = term.vtStream();
     defer vt_stream.deinit();
+    @import("fork/facts.zig").install(&vt_stream, daemon, gpa); // [fork]
 
     // Carries the tail of the previous PTY read so the task-exit marker
     // search below can see across a read() boundary. Sized to comfortably
