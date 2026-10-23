@@ -57,13 +57,25 @@ docker run --rm --security-opt seccomp=unconfined --cap-add SYS_ADMIN \
 
 ```sh
 scripts/fork-check.sh
-zig-0.16 build test -Dtarget=aarch64-macos
+env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY \
+  zig-0.16 build test -Dtarget=aarch64-macos
 zig-0.16 build -Dtarget=aarch64-macos
 env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY TMPDIR=/tmp SHELL=/bin/bash \
   bats --jobs 1 test/*.bats
 (cd bridge && cargo test)
 ```
 
+- `zig-0.16` is the Zig that `minimum_zig_version` in `build.zig.zon` names. Toolchains sit
+  side by side and are never upgraded in place, because zmx and Ghostty change Zig versions at
+  different times: the official tarball from ziglang.org is unpacked to
+  `~/.local/share/zig-X.Y.Z/`, and `~/.local/bin/zig-X.Y` is a symlink to its `zig`.
+- **The pin cannot pass the Zig that zmx builds with.** Ghostty has needed Zig 0.17 since its
+  commit `3d07ef9e` (2026-10-20), so until upstream zmx moves to 0.17 the newest usable pin is
+  `b58ef1d6`, the commit on Ghostty's main just before it.
+- The `env -u` on the unit tests matters when they are run from inside a zmx session. Upstream's
+  tests call `unsetenv` on those names; if one was really set, libc closes the gap in the
+  environment array, and zig 0.16's test runner, which kept the old length, panics with
+  `attempt to use null value` the first time a later test logs a warning.
 - `-Dtarget` is deliberate. A native-target build compiles zig 0.16.0's libc++ against the
   Xcode SDK, which fails on the macOS 27.0 SDK (`use of undeclared identifier 'INFINITY'`),
   on upstream's pin too. An explicit target uses zig's bundled headers instead.
