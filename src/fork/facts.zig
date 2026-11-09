@@ -370,8 +370,8 @@ fn openSink(socket_dir: []const u8, session: []const u8) ?Sink {
     // Trimmed, or "dir/" would put ".facts" inside the socket directory as a bogus session.
     const base = std.mem.trimEnd(u8, socket_dir, "/");
     if (base.len == 0) return null;
-    const root_path = std.fmt.bufPrintZ(&buf, "{s}.facts", .{base}) catch return null;
-    const name = std.fmt.bufPrintZ(&name_buf, "{s}", .{session}) catch return null;
+    const root_path = std.fmt.bufPrintSentinel(&buf, "{s}.facts", .{base}, 0) catch return null;
+    const name = std.fmt.bufPrintSentinel(&name_buf, "{s}", .{session}, 0) catch return null;
     const root = ownDir(c.AT.FDCWD, root_path) orelse return null;
     defer _ = c.close(root);
     // Separate directories because any name, ".x.tmp" included, is a legal session name, and

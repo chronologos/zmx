@@ -33,14 +33,19 @@ tests in a file reached only from a function body are never collected.
 
 ## The one exception: the libghostty pin
 
-The fork pins a newer ghostty than upstream does. That changes `url` and `hash` in
+Not in use at the moment: since v1.0 upstream pins a ghostty that has everything `facts.zig`
+needs, so the fork leaves `build.zig.zon` and the lock alone. `fork-check.sh` compares the two
+only while our pin differs from `main`'s. Upstream's lock and flake still name Zig 0.16 and
+its old pin, so don't expect the nix build to work until upstream regenerates them.
+
+If the fork needs a newer ghostty than upstream again, that changes `url` and `hash` in
 `build.zig.zon` and most of `build.zig.zon2json-lock`, and neither can carry a marker
 (`zig fetch --save` rewrites the lines; the lock is JSON). They will conflict whenever
 upstream bumps its own pin. Resolve by taking whichever ghostty commit is newer, then
 regenerate rather than hand-merge:
 
 ```sh
-zig-0.16 fetch --save=ghostty 'git+https://github.com/ghostty-org/ghostty#<full sha>'
+zig-0.17 fetch --save=ghostty 'git+https://github.com/ghostty-org/ghostty#<full sha>'
 
 # No nix on the Mac, so the lock is regenerated in a container. The zig2nix rev is the one
 # in flake.lock; bwrap inside the nix build needs the two extra docker flags.
@@ -51,27 +56,26 @@ docker run --rm --security-opt seccomp=unconfined --cap-add SYS_ADMIN \
   zon2lock build.zig.zon
 ```
 
-`fork-check.sh` fails if the lock doesn't contain the hash `build.zig.zon` pins.
+`fork-check.sh` fails if the lock doesn't contain the hash the fork pins.
 
 ## After every rebase or pin bump
 
 ```sh
 scripts/fork-check.sh
 env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY \
-  zig-0.16 build test -Dtarget=aarch64-macos
-zig-0.16 build -Dtarget=aarch64-macos
+  zig-0.17 build test -Dtarget=aarch64-macos
+zig-0.17 build -Dtarget=aarch64-macos
 env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY TMPDIR=/tmp SHELL=/bin/bash \
   bats --jobs 1 test/*.bats
 (cd bridge && cargo test)
 ```
 
-- `zig-0.16` is the Zig that `minimum_zig_version` in `build.zig.zon` names. Toolchains sit
+- `zig-0.17` is the Zig that `minimum_zig_version` in `build.zig.zon` names. Toolchains sit
   side by side and are never upgraded in place, because zmx and Ghostty change Zig versions at
   different times: the official tarball from ziglang.org is unpacked to
   `~/.local/share/zig-X.Y.Z/`, and `~/.local/bin/zig-X.Y` is a symlink to its `zig`.
-- **The pin cannot pass the Zig that zmx builds with.** Ghostty has needed Zig 0.17 since its
-  commit `3d07ef9e` (2026-10-20), so until upstream zmx moves to 0.17 the newest usable pin is
-  `b58ef1d6`, the commit on Ghostty's main just before it.
+- **The pin cannot pass the Zig that zmx builds with.** When Ghostty moves to a newer Zig first,
+  the newest usable pin is the commit on its main just before the move.
 - The `env -u` on the unit tests matters when they are run from inside a zmx session. Upstream's
   tests call `unsetenv` on those names; if one was really set, libc closes the gap in the
   environment array, and zig 0.16's test runner, which kept the old length, panics with
@@ -79,6 +83,8 @@ env -u ZMX_SESSION -u ZMX_SESSION_PREFIX -u ZMX_NO_DETACH_KEY TMPDIR=/tmp SHELL=
 - `-Dtarget` is deliberate. A native-target build compiles zig 0.16.0's libc++ against the
   Xcode SDK, which fails on the macOS 27.0 SDK (`use of undeclared identifier 'INFINITY'`),
   on upstream's pin too. An explicit target uses zig's bundled headers instead.
+- One bats test, `write: a file larger than the PTY input buffer arrives whole`, fails on macOS
+  on plain upstream as well (v1.0.1).
 - `bats` reuses `zig-out/bin/zmx` if it exists, so rebuild first or it tests a stale binary.
 - `TMPDIR=/tmp` keeps the per-test socket paths under the `sun_path` limit. Each test gets
   its own `ZMX_DIR`, so real sessions are not touched.
